@@ -1,6 +1,3 @@
-#include <Arduino.h>
-#include <M5Stack.h>
-#include <M5GFX.h>
 #include "Wolf3D.h"
 
 M5GFX display;
@@ -10,9 +7,9 @@ g_map game;
 
 void addObstacleMap(){
   bool corner = false;
-  for (int i = 2; i<=game.H && game.nbObstacles<=7000; i++){
+  for (int i = 1; i<=game.H && game.nbObstacles<=7000; i++){
       for (int j = 0; j<=game.W; j++){
-        if (i == 0 || i == game.H || j == 0 || j ==  game.W){
+        if (i == 1 || i == game.H || j == 0 || j ==  game.W){
               game.nbObstacles++;
               game.obstacles[game.nbObstacles++] = { 
                 x: j, 

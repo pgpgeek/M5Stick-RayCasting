@@ -1,4 +1,7 @@
 #ifndef __WORLD3D_H_
+#include <Arduino.h>
+#include <M5Stack.h>
+#include <M5GFX.h>
 
 #define M5_BUTTON_MENU 35
 #define M5_BUTTON_HOME 37
