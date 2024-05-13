@@ -4,8 +4,6 @@
 #include <M5GFX.h>
 
 #define M5_BUTTON_MENU 35
-#define M5_BUTTON_HOME 37
-#define M5_BUTTON_RST 39
 
 
 typedef struct {

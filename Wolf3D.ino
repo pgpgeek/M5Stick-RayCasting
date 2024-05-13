@@ -217,6 +217,7 @@ void setup()
 }
 
 
+
 void loop()
 {
   obst tmpCoord;
@@ -229,7 +230,15 @@ void loop()
   if (M5.BtnA.isPressed() || M5.BtnC.isPressed() || digitalRead(M5_BUTTON_MENU) == LOW){
     display.drawPixel(game.player.x, game.player.y, BLACK);
     drawLine(BLACK);
-    if (M5.BtnA.isPressed()) {
+     if (M5.BtnA.isPressed() && digitalRead(M5_BUTTON_MENU) == LOW ) {
+      tmpCoord =  getCoord(game.player.x, game.player.y, -2, game.directionDegree + ( game.maxDegreeLine / 2) );
+      res = isObstacle(tmpCoord.x, tmpCoord.y);
+      //if (res.status == false) {
+          game.player.x = tmpCoord.x;
+          game.player.y = tmpCoord.y;
+     // }
+    }
+    else if (M5.BtnA.isPressed()) {
         game.directionDegree=game.directionDegree+10;
     } 
     else if (M5.BtnC.isPressed()) {
@@ -239,15 +248,13 @@ void loop()
           game.player.x = tmpCoord.x;
           game.player.y = tmpCoord.y;
      // }
-    } 
+    }
     else  if (digitalRead(M5_BUTTON_MENU) == LOW) {
       game.directionDegree=game.directionDegree-10;
-      
     }
     draw3DLine();
     display.drawPixel(game.player.x, game.player.y, RED);
     drawLine(GREEN);
-
    }
-    delay(100);
+   delay(100);
 }
