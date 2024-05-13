@@ -7,14 +7,22 @@ g_map game;
 
 void addObstacleMap(){
   bool corner = false;
-  for (int i = 1; i<=game.H && game.nbObstacles<=7000; i++){
-      for (int j = 0; j<=game.W; j++){
-        if (i == 1 || i == game.H || j == 0 || j ==  game.W){
-              game.nbObstacles++;
-              game.obstacles[game.nbObstacles++] = { 
+  for (int i = 1; i <= game.mapH && game.nbObstacles<=7000; i++){
+      for (int j = 0; j <= game.mapW; j++){
+        if (i == 1 || i == game.mapH || j == 0 || j ==  game.mapW){
+              // game.nbObstacles++;
+              corner = ! ( ((j == 0 || j == game.mapW)  &&  i % 5) || j % 5 );
+              game.obstacles[game.nbObstacles] = { 
                 x: j, 
                 y: i, 
-                color : (j % 5 && i % 2)  ||  ((j == 0 || j == game.W)  &&  i % 5) ? WHITE : BLACK };
+                color : corner ? TFT_DARKGREY : BLACK
+               };
+               if (corner == false) {
+                 game.obstacles[game.nbObstacles].rgb.r = 128;
+                 game.obstacles[game.nbObstacles].rgb.g = 128;
+                 game.obstacles[game.nbObstacles].rgb.b = 128;
+               }
+               game.nbObstacles++;
             }
     }
   }
@@ -23,10 +31,17 @@ void addObstacleMap(){
       for (int _w=0; _w<=game.blockSize; _w++){
         corner = ((_h == 0  && _w == 0) || (_h == game.blockSize && _w == 0)  ||
                   (_h == 0  && _w == game.blockSize) ||  (_h == game.blockSize && _w == game.blockSize)); 
-        game.obstacles[game.nbObstacles++] = { 
+        game.obstacles[game.nbObstacles] = { 
           x: mapObstacle[_b].x + _w , 
           y: mapObstacle[_b].y + _h, 
-          color : corner ? BLACK : WHITE };    
+          color : corner ? BLACK : TFT_DARKGREY
+        };
+        if (corner == false) {
+          game.obstacles[game.nbObstacles].rgb.r = 128;
+          game.obstacles[game.nbObstacles].rgb.g = 128;
+          game.obstacles[game.nbObstacles].rgb.b = 128;
+        }
+        game.nbObstacles++;   
       } 
     }
   }
@@ -34,19 +49,20 @@ void addObstacleMap(){
 
 
 isObs isObstacle(int x, int y){
-  isObs res  = { status: false, color:BLACK };
+  obst  emptyObst;
+  isObs res  = { status: false, infos:emptyObst };
   for (int i = 0; i<=game.nbObstacles; i++){
     if ((x == game.obstacles[i].x && y == game.obstacles[i].y) ||
-        x < 0 || x > game.W || y <= 0 || y >= game.H ){
+        x < 0 || x > game.mapW || y <= 0 || y >= game.mapH ){
         res.status = true;
-        res.color = game.obstacles[i].color;
+        res.infos = game.obstacles[i];
         return res;
     }
   }
   return res;
 }
 
-obst getCoord(int x, int y, int dist, int degree) {
+obst getCoord(int x, int y, int dist, float degree) {
   return (obst) {
       x : x + dist * cos(3.14 * degree / 180),
 	    y : y + dist * sin(3.14 * degree / 180)
@@ -70,6 +86,38 @@ void drawLine(uint16_t color){
   }
 }
 
+uint16_t getColorFromDistance(rgbColor _rgbcolor, int distance, int maxDistance, int coef) {
+
+  int r,g,b, ratio = ( distance) * coef / maxDistance;
+  uint16_t _r, _g, _b;
+
+  /*Serial.println("distance :");
+  Serial.println(distance);
+  Serial.println("ratio :");
+  Serial.println(ratio);*/
+  if ((_rgbcolor.r == 0 && _rgbcolor.b == 0 && _rgbcolor.g == 0) == true){
+    r = _rgbcolor.r;
+    g = _rgbcolor.g;
+    b = _rgbcolor.b;
+  }
+  else {
+    r = _rgbcolor.r - (_rgbcolor.r - ratio > 0 ? ratio : 0);
+    g = _rgbcolor.g - (_rgbcolor.g - ratio > 0 ? ratio : 0);
+    b = _rgbcolor.b - (_rgbcolor.b - ratio > 0 ? ratio : 0);
+  }
+  
+  /*Serial.println("RGB :");
+  Serial.println(r);
+  Serial.println(g);
+  Serial.println(b);*/
+  // Conversion de RGB888 à RGB565
+  _r = ((r >> 3) & 0x1f) << 11;
+  _g = ((g >> 2) & 0x3f) << 5;
+  _b = (b >> 3)  & 0x1f;
+
+    return (uint16_t) (_r | _g | _b);
+};
+
 void draw3DLine(){
   int nx, ny;
   obst tmpCoord;
@@ -77,13 +125,22 @@ void draw3DLine(){
   int wallHeightPercent, wallHeightPixel, wallBeginPixel;
   int countRay    = 1; 
   int rayWidth    = game.W  / game.maxDegreeLine;
-  int _angle, _distance;
+  int _angle, distance, _distance;
+
+  rgbColor GRASS, SKY;
+  GRASS.r=85;
+  GRASS.g=107;
+  GRASS.b=47;
+
+  SKY.r = 65;
+  SKY.g = 105;
+  SKY.b = 225;
 
   for (int degree =  game.maxDegreeLine; degree >= 0 ; degree--){
     countRay++;
     wallHeightPixel = 0;
     wallBeginPixel  = game.H / 2;
-    for (int distance = 0; distance<=game.maxDistanceLine; distance++){
+    for (distance = 0; distance<=game.maxDistanceLine; distance++){
         tmpCoord =  getCoord(game.player.x, game.player.y, distance, game.directionDegree + degree );
         res = isObstacle(tmpCoord.x, tmpCoord.y);
         _distance = distance;
@@ -97,8 +154,9 @@ void draw3DLine(){
           // WALL
           for (int h = wallBeginPixel;h <= wallBeginPixel + wallHeightPixel; h++){
             for (int w = 0; w <= rayWidth;w++ )  {
-              display.drawPixel((countRay * rayWidth) + w, h,  
-              res.color == BLACK ? BLACK : w % 3 == 1 && h % 2 == 0 || w % 3 == 0 && h % 2 == 1? TFT_LIGHTGREY: TFT_DARKGREY);
+              res.infos.color = getColorFromDistance(res.infos.rgb, distance, game.maxDistanceLine, 100);              
+              display.drawPixel((countRay * rayWidth) + w, h,  res.infos.color);
+              // res.infos.color == BLACK ? BLACK : w % 3 == 1 && h % 2 == 0 || w % 3 == 0 && h % 2 == 1? TFT_LIGHTGREY: TFT_DARKGREY);
             }
           }
           break;
@@ -106,7 +164,7 @@ void draw3DLine(){
      }
     if (game._3DInit == true && 
       game.historyBlocks[countRay].distance == _distance &&
-      game.historyBlocks[countRay].color == res.color)  {
+      game.historyBlocks[countRay].color == res.infos.color)  {
       continue;
     }
     // SKY
@@ -114,7 +172,8 @@ void draw3DLine(){
       for (int w = 0; w <= rayWidth; w++ )  {
         if (game._3DInit == true && h < game.historyBlocks[countRay].beginWall) 
           continue;
-        display.drawPixel((countRay * rayWidth) + w, h, BLACK );
+        
+        display.drawPixel((countRay * rayWidth) + w, h, getColorFromDistance(SKY, wallBeginPixel - h, wallBeginPixel, 50) );
       }
     }
     // GRASS
@@ -124,14 +183,14 @@ void draw3DLine(){
             && wallBeginPixel + wallHeightPixel >= game.historyBlocks[countRay].beginGrass 
             && h > game.historyBlocks[countRay].beginGrass) 
             continue;
-        display.drawPixel((countRay * rayWidth) + w, h,  TFT_NAVY);
+        display.drawPixel((countRay * rayWidth) + w, h,  getColorFromDistance(GRASS, game.H - h, game.H, 50));
       }
     }   
     game.historyBlocks[countRay] = { 
       distance : _distance,  
       beginWall  : wallBeginPixel,
       beginGrass : wallBeginPixel + wallHeightPixel,
-      color : res.color
+      color : res.infos.color
     };
   }
   game._3DInit = true;
@@ -141,38 +200,48 @@ void draw3DLine(){
 
 void setup()
 {
+  //Serial.begin(115200);
   M5.begin();
-  game.obstacles = (obst*)malloc(5000 * sizeof(obst));
+  display.init();
+  display.setRotation(1);
+  // display.begin();
+
+  game.obstacles = (obst*)malloc(3000 * sizeof(obst));
   pinMode(M5_BUTTON_MENU, INPUT);
-  display.begin();
   display.fillScreen(TFT_BLACK);
-  game.W = display.width()  -1;
-  game.H = display.height() -1;
+  game.W = display.width();
+  game.H = display.height();
   addObstacleMap();
+  Serial.println("Setup OK !");
+  draw3DLine();
 }
 
 
 void loop()
 {
   obst tmpCoord;
+  isObs res;
 
   M5.update();
   for (int i = 0; i<=game.nbObstacles; i++){
-     display.drawPixel(game.obstacles[i].x, game.obstacles[i].y, game.obstacles[i].color);
+     display.drawPixel(game.obstacles[i].x, game.obstacles[i].y, TFT_RED);//game.obstacles[i].color);
   }
   if (M5.BtnA.isPressed() || M5.BtnC.isPressed() || digitalRead(M5_BUTTON_MENU) == LOW){
     display.drawPixel(game.player.x, game.player.y, BLACK);
     drawLine(BLACK);
     if (M5.BtnA.isPressed()) {
-        game.directionDegree=game.directionDegree-10;
+        game.directionDegree=game.directionDegree+10;
     } 
     else if (M5.BtnC.isPressed()) {
       tmpCoord =  getCoord(game.player.x, game.player.y, 2, game.directionDegree + ( game.maxDegreeLine / 2) );
-      game.player.x = tmpCoord.x;
-      game.player.y = tmpCoord.y;
+      res = isObstacle(tmpCoord.x, tmpCoord.y);
+      //if (res.status == false) {
+          game.player.x = tmpCoord.x;
+          game.player.y = tmpCoord.y;
+     // }
     } 
     else  if (digitalRead(M5_BUTTON_MENU) == LOW) {
-      game.directionDegree=game.directionDegree+10;
+      game.directionDegree=game.directionDegree-10;
       
     }
     draw3DLine();
