@@ -10,23 +10,18 @@ void addObstacleMap(){
   for (int i = 1; i <= game.mapH && game.nbObstacles<=7000; i++){
       for (int j = 0; j <= game.mapW; j++){
         if (i == 1 || i == game.mapH || j == 0 || j ==  game.mapW){
-              // game.nbObstacles++;
               corner = ! ( ((j == 0 || j == game.mapW)  &&  i % 5) || j % 5 );
               game.obstacles[game.nbObstacles] = { 
                 x: j, 
                 y: i, 
-                color : corner ? TFT_DARKGREY : BLACK
+                color : corner ? TFT_DARKGREY : BLACK,
+                rgb : corner == false ? __WALL_RGB_COLOR__ : __BLACK_RGB_COLOR__
                };
-               if (corner == false) {
-                 game.obstacles[game.nbObstacles].rgb.r = 128;
-                 game.obstacles[game.nbObstacles].rgb.g = 128;
-                 game.obstacles[game.nbObstacles].rgb.b = 128;
-               }
                game.nbObstacles++;
             }
     }
   }
-  for (int _b = 0; _b<=9; _b++){
+  for (int _b = 0; _b<=4; _b++){
     for (int _h=0; _h<=game.blockSize; _h++){
       for (int _w=0; _w<=game.blockSize; _w++){
         corner = ((_h == 0  && _w == 0) || (_h == game.blockSize && _w == 0)  ||
@@ -34,13 +29,9 @@ void addObstacleMap(){
         game.obstacles[game.nbObstacles] = { 
           x: mapObstacle[_b].x + _w , 
           y: mapObstacle[_b].y + _h, 
-          color : corner ? BLACK : TFT_DARKGREY
+          color : corner ? BLACK : TFT_DARKGREY,
+          rgb : corner == false ? __WALL_RGB_COLOR__ : __BLACK_RGB_COLOR__
         };
-        if (corner == false) {
-          game.obstacles[game.nbObstacles].rgb.r = 128;
-          game.obstacles[game.nbObstacles].rgb.g = 128;
-          game.obstacles[game.nbObstacles].rgb.b = 128;
-        }
         game.nbObstacles++;   
       } 
     }
@@ -91,10 +82,6 @@ uint16_t getColorFromDistance(rgbColor _rgbcolor, int distance, int maxDistance,
   int r,g,b, ratio = ( distance) * coef / maxDistance;
   uint16_t _r, _g, _b;
 
-  /*Serial.println("distance :");
-  Serial.println(distance);
-  Serial.println("ratio :");
-  Serial.println(ratio);*/
   if ((_rgbcolor.r == 0 && _rgbcolor.b == 0 && _rgbcolor.g == 0) == true){
     r = _rgbcolor.r;
     g = _rgbcolor.g;
@@ -106,11 +93,6 @@ uint16_t getColorFromDistance(rgbColor _rgbcolor, int distance, int maxDistance,
     b = _rgbcolor.b - (_rgbcolor.b - ratio > 0 ? ratio : 0);
   }
   
-  /*Serial.println("RGB :");
-  Serial.println(r);
-  Serial.println(g);
-  Serial.println(b);*/
-  // Conversion de RGB888 à RGB565
   _r = ((r >> 3) & 0x1f) << 11;
   _g = ((g >> 2) & 0x3f) << 5;
   _b = (b >> 3)  & 0x1f;
@@ -127,14 +109,6 @@ void draw3DLine(){
   int rayWidth    = game.W  / game.maxDegreeLine;
   int _angle, distance, _distance;
 
-  rgbColor GRASS, SKY;
-  GRASS.r=85;
-  GRASS.g=107;
-  GRASS.b=47;
-
-  SKY.r = 65;
-  SKY.g = 105;
-  SKY.b = 225;
 
   for (int degree =  game.maxDegreeLine; degree >= 0 ; degree--){
     countRay++;
@@ -172,8 +146,7 @@ void draw3DLine(){
       for (int w = 0; w <= rayWidth; w++ )  {
         if (game._3DInit == true && h < game.historyBlocks[countRay].beginWall) 
           continue;
-        
-        display.drawPixel((countRay * rayWidth) + w, h, getColorFromDistance(SKY, wallBeginPixel - h, wallBeginPixel, 50) );
+        display.drawPixel((countRay * rayWidth) + w, h, getColorFromDistance(__SKY_RGB_COLOR__, wallBeginPixel - h, wallBeginPixel, 50) );
       }
     }
     // GRASS
@@ -183,7 +156,7 @@ void draw3DLine(){
             && wallBeginPixel + wallHeightPixel >= game.historyBlocks[countRay].beginGrass 
             && h > game.historyBlocks[countRay].beginGrass) 
             continue;
-        display.drawPixel((countRay * rayWidth) + w, h,  getColorFromDistance(GRASS, game.H - h, game.H, 50));
+        display.drawPixel((countRay * rayWidth) + w, h,  getColorFromDistance(__GRASS_RGB_COLOR__, game.H - h, game.H, 50));
       }
     }   
     game.historyBlocks[countRay] = { 
@@ -200,12 +173,9 @@ void draw3DLine(){
 
 void setup()
 {
-  //Serial.begin(115200);
   M5.begin();
   display.init();
   display.setRotation(1);
-  // display.begin();
-
   game.obstacles = (obst*)malloc(3000 * sizeof(obst));
   pinMode(M5_BUTTON_MENU, INPUT);
   display.fillScreen(TFT_BLACK);
@@ -222,34 +192,34 @@ void loop()
 {
   obst tmpCoord;
   isObs res;
+  bool leftButton  = M5.BtnA.isPressed();
+  bool rightButton = digitalRead(M5_BUTTON_MENU) == LOW;
+  bool frontButton = M5.BtnC.isPressed();
+  bool backButton  = leftButton && rightButton;
+  bool userAction  = leftButton || rightButton || frontButton;
 
   M5.update();
   for (int i = 0; i<=game.nbObstacles; i++){
      display.drawPixel(game.obstacles[i].x, game.obstacles[i].y, TFT_RED);//game.obstacles[i].color);
   }
-  if (M5.BtnA.isPressed() || M5.BtnC.isPressed() || digitalRead(M5_BUTTON_MENU) == LOW){
+  if (userAction){
     display.drawPixel(game.player.x, game.player.y, BLACK);
     drawLine(BLACK);
-     if (M5.BtnA.isPressed() && digitalRead(M5_BUTTON_MENU) == LOW ) {
+    if (backButton) {
       tmpCoord =  getCoord(game.player.x, game.player.y, -2, game.directionDegree + ( game.maxDegreeLine / 2) );
       res = isObstacle(tmpCoord.x, tmpCoord.y);
-      //if (res.status == false) {
-          game.player.x = tmpCoord.x;
-          game.player.y = tmpCoord.y;
-     // }
-    }
-    else if (M5.BtnA.isPressed()) {
-        game.directionDegree=game.directionDegree+10;
+      game.player.x = tmpCoord.x;
+      game.player.y = tmpCoord.y;
     } 
-    else if (M5.BtnC.isPressed()) {
+    else if (frontButton) {
       tmpCoord =  getCoord(game.player.x, game.player.y, 2, game.directionDegree + ( game.maxDegreeLine / 2) );
-      res = isObstacle(tmpCoord.x, tmpCoord.y);
-      //if (res.status == false) {
-          game.player.x = tmpCoord.x;
-          game.player.y = tmpCoord.y;
-     // }
+      game.player.x = tmpCoord.x;
+      game.player.y = tmpCoord.y;
     }
-    else  if (digitalRead(M5_BUTTON_MENU) == LOW) {
+    else if (leftButton) {
+      game.directionDegree=game.directionDegree+10;
+    }
+    else  if (rightButton) {
       game.directionDegree=game.directionDegree-10;
     }
     draw3DLine();

@@ -6,13 +6,11 @@
 #define M5_BUTTON_MENU 35
 
 
-typedef struct {
-  int r = 0;
-  int g = 0;
-  int b = 0;
-} rgbColor;
-
-
+struct rgbColor{
+  int r;
+  int g;
+  int b;
+};
 
 typedef struct{
   int x;
@@ -20,6 +18,7 @@ typedef struct{
   uint16_t color;
   rgbColor rgb;
 } obst;
+
 
 struct isObs{
   bool status;
@@ -40,32 +39,30 @@ struct g_map{
   uint16_t H;
   int mapW = 55;
   int mapH = 55;
-
   int directionDegree = 30;
   int maxDegreeLine   = 60;
   int maxDistanceLine = 20;
   int blockSize = 5;
   hblock historyBlocks[380];
-  obst player = (obst){ x: 30, y: 5};
+  obst player = { x: 30, y: 5};
   int nbObstacles = 0;
   obst* obstacles;
   bool _3DInit = false;
 };
 
-obst mapObstacle[9] = {
+obst mapObstacle[5] = {
   { x : 10, y : 10},
-// { x : 25, y : 10},
   { x : 40, y : 10}, 
-//  { x : 10, y : 25},
   { x : 25, y : 25},
-// { x : 40, y : 25},
   { x : 10, y : 40},
-//  { x : 25, y : 40},
   { x : 40, y : 40}
 };
 
 
-
+rgbColor __BLACK_RGB_COLOR__   = { r:0,   g:0,   b:0 };
+rgbColor __WALL_RGB_COLOR__    = { r:128, g:128, b:128 };
+rgbColor __SKY_RGB_COLOR__     = { r:65,  g:105, b:225 };
+rgbColor __GRASS_RGB_COLOR__   = { r:85,  g:107, b:47 };
 
 void draw3DLine();
 void drawLine(uint16_t color);
